@@ -1,27 +1,38 @@
 FROM php:8.2-apache
 
-# Отключаем интерактивный режим и обновляем пакеты
-ENV DEBIAN_FRONTEND=noninteractive
-
+# Установим системные пакеты
 RUN apt-get update && apt-get install -y \
-    git curl unzip zip sqlite3 libzip-dev libpng-dev libonig-dev libxml2-dev mariadb-client \
+    git \
+    curl \
+    unzip \
+    zip \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    libsqlite3-dev \
+    default-mysql-client \
     && docker-php-ext-install pdo pdo_mysql pdo_sqlite zip \
+    && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
+# Настройки Apache
+COPY ./docker/apache/laravel.conf /etc/apache2/sites-available/000-default.conf
+
+# Устанавливаем Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-RUN a2enmod rewrite
-
+# Устанавливаем рабочую директорию
 WORKDIR /var/www/html
 
+# Копируем проект
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader
-RUN cp .env.example .env || true
+# Права на storage и bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Генерация ключа Laravel (без фатала при первой сборке)
 RUN php artisan key:generate || true
-RUN chmod -R 775 storage bootstrap/cache
-RUN php artisan migrate --force || true
 
 EXPOSE 80
-
 CMD ["apache2-foreground"]
