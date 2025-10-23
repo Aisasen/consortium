@@ -1,28 +1,36 @@
-# Используем официальный PHP-образ с Apache
+# Используем официальный образ PHP с Apache
 FROM php:8.2-apache
 
-# Устанавливаем зависимости, нужные Laravel
+# Устанавливаем системные пакеты и PHP-расширения
 RUN apt-get update && apt-get install -y \
-    git unzip libpq-dev libzip-dev zip sqlite3 \
+    git unzip libpq-dev libzip-dev libsqlite3-dev zip sqlite3 \
     && docker-php-ext-install pdo pdo_mysql pdo_sqlite zip
+
+# Включаем модуль Apache для работы с .htaccess
+RUN a2enmod rewrite
 
 # Устанавливаем Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Копируем проект в контейнер
+# Устанавливаем рабочую директорию
 WORKDIR /var/www/html
+
+# Копируем файлы Laravel
 COPY . .
 
-# Устанавливаем зависимости Laravel
+# Устанавливаем зависимости проекта
 RUN composer install --no-dev --optimize-autoloader
 
 # Генерируем ключ приложения
-RUN php artisan key:generate || true
+RUN php artisan key:generate
 
-# Делаем storage и bootstrap/cache доступными для записи
-RUN chmod -R 777 storage bootstrap/cache
+# Выполняем миграции (если нужно при сборке)
+# RUN php artisan migrate --force
 
-# Открываем порт
+# Настройки прав доступа
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Открываем порт для Render
 EXPOSE 80
 
 # Запускаем Apache
