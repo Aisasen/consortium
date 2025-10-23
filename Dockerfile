@@ -1,15 +1,16 @@
 FROM php:8.2-apache
 
+# Отключаем интерактивный режим и обновляем пакеты
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y \
-    git curl unzip libzip-dev zip \
-    libpng-dev libonig-dev libxml2-dev \
-    default-mysql-client sqlite3 \
-    && docker-php-ext-install pdo pdo_mysql pdo_sqlite zip
+    git curl unzip zip sqlite3 libzip-dev libpng-dev libonig-dev libxml2-dev mariadb-client \
+    && docker-php-ext-install pdo pdo_mysql pdo_sqlite zip \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN a2enmod rewrite
-COPY ./docker/apache/laravel.conf /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /var/www/html
 
