@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Установим системные пакеты
+# Устанавливаем системные пакеты и PHP-расширения
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -28,11 +28,15 @@ WORKDIR /var/www/html
 # Копируем проект
 COPY . .
 
-# Права на storage и bootstrap/cache
+# Устанавливаем зависимости Laravel
+RUN composer install --no-dev --optimize-autoloader
+
+# Даем права на storage и bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Генерация ключа Laravel (без фатала при первой сборке)
+# Генерируем ключ Laravel (если .env уже есть)
 RUN php artisan key:generate || true
 
 EXPOSE 80
+
 CMD ["apache2-foreground"]
